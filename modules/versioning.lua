@@ -106,9 +106,53 @@ end
 
 -- Create a new versioned copy of the project
 function versioning.create_new_version()
-  -- Open Reaper's native Save As dialog
-  reaper.Main_OnCommand(40022, 0)
-  return true, "Save As dialog opened"
+  -- Get current project information
+  local info, err = versioning.get_project_info()
+  if not info then
+    return false, err or "No project loaded"
+  end
+
+  -- Calculate next version number
+  local next_version = versioning.get_next_version(info)
+
+  -- Build version suffix (e.g. "_v001")
+  local version_suffix = config.format_version(next_version)
+
+  -- Build new folder name and path: {parent_dir}/{base_name}{version_suffix}/
+  local new_folder_name = info.base_name .. version_suffix
+  local new_folder_path = file_ops.join_path(info.parent_directory, new_folder_name)
+  new_folder_path = file_ops.normalize_path(new_folder_path)
+
+  -- Build new project file path: {new_folder}/{base_name}{version_suffix}.rpp
+  -- info.extension already includes the leading dot (e.g. ".rpp"); fall back to ".rpp" if empty
+  local ext = (info.extension and info.extension ~= "") and info.extension or ".rpp"
+  local new_project_filename = new_folder_name .. ext
+  local new_project_path = file_ops.join_path(new_folder_path, new_project_filename)
+  new_project_path = file_ops.normalize_path(new_project_path)
+
+  -- Warn if destination file already exists
+  if file_ops.file_exists(new_project_path) then
+    return false, "Version already exists: " .. new_folder_name
+  end
+
+  -- Create the destination directory
+  if not file_ops.create_directory(new_folder_path) then
+    return false, "Could not create directory: " .. new_folder_path
+  end
+
+  -- Save project to new path with flag 2 (copy all media into project directory)
+  -- Reaper's engine handles .rpp save, media copying, and updating internal references
+  local saved = reaper.Main_SaveProjectEx(nil, new_project_path, 2)
+  if not saved then
+    return false, "Main_SaveProjectEx reported failure saving to: " .. new_project_path
+  end
+
+  -- Verify the new project file was created
+  if not file_ops.file_exists(new_project_path) then
+    return false, "Save failed — project file not found after save: " .. new_project_path
+  end
+
+  return true, new_folder_name
 end
 
 -- Get display string for current version
