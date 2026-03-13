@@ -142,8 +142,11 @@ local function handle_version_conflict(target_path, version_name, info, next_ver
   end
 end
 
--- Create new version using Reaper's save engine (auto mode)
--- Reaper handles .rpp save, media copying, and path rewriting atomically (same as Save As)
+-- Create new version (auto mode)
+-- Strategy:
+--   1. cp -r copies all project files (media, peaks, etc.) to new folder
+--   2. Main_SaveProjectEx flag 0 saves .rpp with new name; Reaper rewrites internal path references
+--   3. Old .rpp is removed from new folder (it was copied in step 1, now replaced by step 2)
 function versioning.create_new_version_safe()
   local info, err = versioning.get_project_info()
   if not info then
@@ -176,22 +179,37 @@ function versioning.create_new_version_safe()
   local new_rpp_path = file_ops.join_path(new_folder_path, new_rpp_name)
   new_rpp_path = file_ops.normalize_path(new_rpp_path)
 
-  -- Create destination directory before calling Main_SaveProjectEx
+  -- Create destination directory
   if not file_ops.create_directory(new_folder_path) then
     local err_msg = "Failed to create directory: " .. new_folder_path
     log_message("❌ RASP Error: " .. err_msg)
     return false, err_msg
   end
 
-  -- Save using Reaper's engine with flag 2: copies all media into project directory
-  -- and rewrites internal .rpp references — identical to Save As with "Copy all media" ticked.
+  -- Copy all project files (media, peaks, etc.) from source directory
+  local copy_success, copy_err = file_ops.copy_directory(info.directory, new_folder_path)
+  if not copy_success then
+    local err_msg = "Failed to copy project files: " .. (copy_err or "unknown error")
+    log_message("❌ RASP Error: " .. err_msg)
+    return false, err_msg
+  end
+
+  -- Save .rpp with new name; flag 0 = save to path, Reaper rewrites internal references
   -- Main_SaveProjectEx returns void; verify success by checking file existence.
-  reaper.Main_SaveProjectEx(info.project, new_rpp_path, 2)
+  reaper.Main_SaveProjectEx(info.project, new_rpp_path, 0)
 
   if not file_ops.file_exists(new_rpp_path) then
     local err_msg = "Save failed: project file not found at " .. new_rpp_path
     log_message("❌ RASP Error: " .. err_msg)
     return false, err_msg
+  end
+
+  -- Remove old .rpp that was copied in step 1 (name differs from new .rpp)
+  if info.filename ~= new_rpp_name then
+    local old_rpp_in_dest = file_ops.join_path(new_folder_path, info.filename)
+    if file_ops.file_exists(old_rpp_in_dest) then
+      os.remove(old_rpp_in_dest)
+    end
   end
 
   log_message("✅ RASP: Version created successfully!")

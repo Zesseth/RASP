@@ -93,7 +93,7 @@ Fully automated versioning that guarantees all media files are copied.
 **When to use:**
 - You want fast, reliable versioning
 - You want to ensure no media references break
-- You want the new version to open automatically
+- You want to ensure no media references break
 
 **How it works:**
 1. Click "Create New Version"
@@ -101,8 +101,7 @@ Fully automated versioning that guarantees all media files are copied.
    - Calculates next version number (v001 → v002)
    - Creates new folder `ProjectName_v002/`
    - Copies ALL project files (audio, MIDI, peaks, etc.)
-   - Saves project file with new name
-   - Opens the new version in Reaper
+   - Saves project file with new name (Reaper rewrites internal path references)
 
 **Console output (success):**
 ```
@@ -138,8 +137,7 @@ When you manually copy/move a project without its media, these references break.
 
 1. ✅ Copies the **entire project folder** (all files)
 2. ✅ Creates a new `.rpp` file with the version name
-3. ✅ Preserves relative path structure
-4. ✅ Automatically opens the new version
+3. ✅ Reaper rewrites internal path references to match the new location
 
 This ensures your versioned projects are **100% self-contained** and portable.
 
