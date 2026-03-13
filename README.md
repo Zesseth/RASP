@@ -53,23 +53,27 @@ MyProject_v002/MyProject_v002.rpp  → Version 2
 
 ## Roadmap
 
-### Version 0.1 goals
+### Version 0.1 (in progress)
 - RASP UI / plugin to Reaper
-- ability to "auto version" from RASP UI
-- increase version number when versioning
+- Auto version from RASP UI
+- Increment version number when versioning
 
-### Version 0.2 goals
-- make archiving action of projects to local drive
-- UI for archiving 
-- Select how many versions are kept and rest are achived
+### Version 0.2 (planned)
+- Safe versioning: increment version and save automatically using Reaper's native save
+- Native/Auto mode selection (Auto = fully automated, Native = opens Reaper's Save As dialog)
+- Conflict handling when version folder already exists (overwrite / increment / do nothing)
+- Archive current project versions to a local drive
+- UI for archiving with configurable "versions to keep" count
 
-### Version 0.3 goals
-- Make archiving action of projects to Backblaze B2
-- Able to pull back project from archive from Backblaze B2
+### Version 0.3 (planned)
+- Archive current project to Backblaze B2 cloud storage
+- Restore project from Backblaze B2 archive
 
-### Version 0.3 goals
+### Version 0.4 (planned)
+- Configuration for Reaper media folder path
+- Find all Reaper projects from configured media folder
+- Select which projects to archive and how many versions to keep per project
 
-- find all repaer projects (from REPER media folder)
-    - Able to choose what projects will be archived and how many versions are kept
-    - Configuration option for singe "Reaper media" folder
+### Future
+- Additional cloud storage destinations (Amazon S3, Azure Blob Storage, Storj)
     
