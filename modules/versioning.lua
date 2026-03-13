@@ -104,47 +104,40 @@ function versioning.get_next_version(info)
   end
 end
 
--- Find available suffix when folder exists (a, b, c, ... z)
-local function find_available_suffix(base_path)
-  for i = 1, 26 do
-    local suffix = "_" .. string.char(96 + i)  -- 'a', 'b', 'c', ...
-    local new_path = base_path .. suffix
-    if not file_ops.dir_exists(new_path) then
-      return suffix
-    end
-  end
-  return nil  -- All suffixes used (unlikely)
-end
-
 -- Log message to REAPER console
 local function log_message(msg)
   reaper.ShowConsoleMsg(msg .. "\n")
 end
 
 -- Handle version folder conflict
--- Returns: new_path (modified if needed), or nil if user cancelled
-local function handle_version_conflict(target_path, version_name)
+-- Returns: resolved_path, resolved_folder_name, or nil if user cancelled
+local function handle_version_conflict(target_path, version_name, info, next_version)
   local msg = string.format(
     "Folder '%s' already exists!\n\nChoose action:\n" ..
-    "YES = Create alongside (add suffix _a, _b, etc.)\n" ..
-    "NO = Overwrite (merge files)\n" ..
-    "CANCEL = Abort operation",
+    "YES = Increment version number (use next available)\n" ..
+    "NO = Overwrite existing folder\n" ..
+    "CANCEL = Do nothing",
     version_name
   )
-  
+
   local result = reaper.ShowMessageBox(msg, "RASP - Version Conflict", 3)
-  
-  if result == 6 then  -- Yes = Create alongside
-    local suffix = find_available_suffix(target_path)
-    if suffix then
-      return target_path .. suffix
-    else
-      log_message("❌ RASP Error: All suffixes (a-z) are used for this version")
-      return nil
+
+  if result == 6 then  -- Yes = Increment version
+    local try_version = next_version + 1
+    while try_version <= 999 do
+      local try_suffix = config.format_version(try_version)
+      local try_name = info.base_name .. try_suffix
+      local try_path = file_ops.join_path(info.parent_directory, try_name)
+      if not file_ops.dir_exists(try_path) then
+        return try_path, try_name
+      end
+      try_version = try_version + 1
     end
+    log_message("❌ RASP Error: No available version number found (tried up to v999)")
+    return nil
   elseif result == 7 then  -- No = Overwrite
-    return target_path  -- Keep original path, will overwrite
-  else  -- Cancel
+    return target_path, version_name
+  else  -- Cancel = Do nothing
     return nil
   end
 end
@@ -168,12 +161,13 @@ function versioning.create_new_version_safe()
 
   -- Handle existing folder conflict
   if file_ops.dir_exists(new_folder_path) then
-    new_folder_path = handle_version_conflict(new_folder_path, new_folder_name)
-    if not new_folder_path then
+    local resolved_path, resolved_name = handle_version_conflict(new_folder_path, new_folder_name, info, next_version)
+    if not resolved_path then
       log_message("   ⚠️ Operation cancelled by user")
       return false, "Operation cancelled"
     end
-    new_folder_name = file_ops.get_filename(new_folder_path)
+    new_folder_path = resolved_path
+    new_folder_name = resolved_name
     log_message("   📁 Using: " .. new_folder_path)
   end
 
@@ -204,7 +198,7 @@ function versioning.create_new_version_safe()
   log_message("   📄 Project: " .. new_rpp_name)
   log_message("   📂 Location: " .. new_folder_path)
 
-  return true, string.format("Version %s created", version_suffix)
+  return true, string.format("Version %s created", new_folder_name)
 end
 
 -- Create a new versioned copy of the project

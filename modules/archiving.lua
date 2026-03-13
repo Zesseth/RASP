@@ -46,9 +46,8 @@ function archiving.find_all_versions(parent_dir, base_name)
       -- Only include if version suffix starts immediately after base_name
       -- This ensures "ProjectName_v001" matches but "ProjectName_extra_v001" doesn't
       if version then
-        local escaped_prefix = prefix:gsub("([%.%-%+%*%?%[%]%^%$%(%)%%])", "%%%1")
         local expected_suffix = prefix .. string.format(config.get_version_format(), version)
-        
+
         if remainder == expected_suffix then
           table.insert(versions, {
             name = subdir,
@@ -160,9 +159,9 @@ function archiving.archive_versions(archive_dest, versions_to_keep)
   
   -- Create archive destination if it doesn't exist
   if not file_ops.dir_exists(archive_dest) then
-    local success = file_ops.create_directory(archive_dest)
-    if not success then
-      return false, "Could not create archive destination"
+    file_ops.create_directory(archive_dest)
+    if not file_ops.dir_exists(archive_dest) then
+      return false, "Could not create archive destination: " .. archive_dest
     end
   end
   

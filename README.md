@@ -15,10 +15,12 @@ A Lua plugin for Reaper DAW that provides automatic project versioning with full
 
 ### Required
 - **Reaper DAW** v6.0 or newer (tested with v7.x)
-- **Operating System**: Linux (Debian) or Windows 11 (tested)
+- **Operating System**: Linux (Debian) or macOS (Windows not supported — see note below)
 
 ### Recommended
 No extensions or additional software needed.
+
+> **Note:** Windows is not supported. Versioning uses Reaper's native `Main_SaveProjectEx` which works on all platforms, but archiving (moving version folders) relies on `cp` and `rm` shell commands which are not available on Windows.
 
 ## Project Structure
 
@@ -108,27 +110,23 @@ RASP: Creating version _v002...
    📁 Target: /home/user/Projects/MySong_v002
 ✅ RASP: Version created successfully!
    📄 Project: MySong_v002.rpp
-   🎵 Files: 47 copied
    📂 Location: /home/user/Projects/MySong_v002
 ```
 
 **Console output (error):**
 ```
-❌ RASP Error: Copy failed
-   Reason: Source directory not found: /path/to/project
+❌ RASP Error: Save failed: project file not found at /home/user/Projects/MySong_v002/MySong_v002.rpp
 ```
 
 ### Conflict Handling
 
 If the target version folder already exists, RASP shows a dialog with three options:
 
-<!-- TODO: Add screenshot of conflict dialog -->
-
 | Option | Result |
 |--------|--------|
-| **Yes** (Create alongside) | Creates `MySong_v002_a/` (or `_b`, `_c`, etc.) |
-| **No** (Overwrite) | Copies files over existing ones (no deletion) |
-| **Cancel** | Aborts versioning, no changes made |
+| **Yes** (Increment version) | Skips to the next available version number |
+| **No** (Overwrite) | Saves into the existing folder |
+| **Cancel** (Do nothing) | Aborts, no changes made |
 
 ### Why Auto Mode is Safer
 
