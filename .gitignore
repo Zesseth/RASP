@@ -1,3 +1,7 @@
+# Claude Code files (not for version control)
+.claude/
+CLAUDE.md
+
 # Prerequisites
 *.d
 

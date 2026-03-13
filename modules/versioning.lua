@@ -149,108 +149,62 @@ local function handle_version_conflict(target_path, version_name)
   end
 end
 
--- Verify version copy was successful
-local function verify_version_copy(new_dir, new_rpp_path, original_file_count)
-  local errors = {}
-  
-  -- Check directory exists
-  if not file_ops.dir_exists(new_dir) then
-    table.insert(errors, "Target directory was not created: " .. new_dir)
-  end
-  
-  -- Check RPP file exists
-  if not file_ops.file_exists(new_rpp_path) then
-    table.insert(errors, "Project file was not created: " .. new_rpp_path)
-  end
-  
-  -- Check file count
-  local new_count = file_ops.count_files_in_dir(new_dir)
-  if new_count == 0 and original_file_count > 0 then
-    table.insert(errors, string.format("No files copied (expected at least %d)", original_file_count))
-  end
-  
-  if #errors > 0 then
-    return false, table.concat(errors, "\n   ")
-  end
-  
-  return true, new_count
-end
-
--- Create new version with full automated copy (safe mode)
+-- Create new version using Reaper's save engine (auto mode)
+-- Reaper handles .rpp save, media copying, and path rewriting atomically (same as Save As)
 function versioning.create_new_version_safe()
-  -- Get current project info
   local info, err = versioning.get_project_info()
   if not info then
     log_message("❌ RASP Error: " .. (err or "No project loaded"))
     return false, err or "No project loaded"
   end
-  
-  -- Calculate next version
+
   local next_version = versioning.get_next_version(info)
   local version_suffix = config.format_version(next_version)
   local new_folder_name = info.base_name .. version_suffix
   local new_folder_path = file_ops.join_path(info.parent_directory, new_folder_name)
-  
+
   log_message("RASP: Creating version " .. version_suffix .. "...")
   log_message("   📁 Target: " .. new_folder_path)
-  
-  -- Check if target folder already exists
+
+  -- Handle existing folder conflict
   if file_ops.dir_exists(new_folder_path) then
     new_folder_path = handle_version_conflict(new_folder_path, new_folder_name)
     if not new_folder_path then
       log_message("   ⚠️ Operation cancelled by user")
       return false, "Operation cancelled"
     end
-    -- Update folder name from potentially modified path
     new_folder_name = file_ops.get_filename(new_folder_path)
     log_message("   📁 Using: " .. new_folder_path)
   end
-  
-  -- Count original files for verification
-  local original_count = file_ops.count_files_in_dir(info.directory)
-  
-  -- Create target directory
+
+  -- Build project file path
+  local new_rpp_name = new_folder_name .. ".rpp"
+  local new_rpp_path = file_ops.join_path(new_folder_path, new_rpp_name)
+  new_rpp_path = file_ops.normalize_path(new_rpp_path)
+
+  -- Create destination directory before calling Main_SaveProjectEx
   if not file_ops.create_directory(new_folder_path) then
     local err_msg = "Failed to create directory: " .. new_folder_path
     log_message("❌ RASP Error: " .. err_msg)
     return false, err_msg
   end
-  
-  -- Copy all project files (excluding .rpp files - we'll save a new one)
-  local copy_success, copy_msg = file_ops.copy_project_files(info.directory, new_folder_path, true)
-  if not copy_success then
-    log_message("❌ RASP Error: Copy failed")
-    log_message("   Reason: " .. (copy_msg or "Unknown error"))
-    return false, copy_msg
+
+  -- Save using Reaper's engine with flag 2: copies all media into project directory
+  -- and rewrites internal .rpp references — identical to Save As with "Copy all media" ticked.
+  -- Main_SaveProjectEx returns void; verify success by checking file existence.
+  reaper.Main_SaveProjectEx(0, new_rpp_path, 2)
+
+  if not file_ops.file_exists(new_rpp_path) then
+    local err_msg = "Save failed: project file not found at " .. new_rpp_path
+    log_message("❌ RASP Error: " .. err_msg)
+    return false, err_msg
   end
-  
-  -- Construct new RPP filename and path
-  local new_rpp_name = new_folder_name .. ".rpp"
-  local new_rpp_path = file_ops.join_path(new_folder_path, new_rpp_name)
-  
-  -- Save project to new location
-  -- Use Main_SaveProjectEx with option 0 (normal save)
-  reaper.Main_SaveProjectEx(0, new_rpp_path, 0)
-  
-  -- Verify the copy was successful
-  local verify_success, verify_result = verify_version_copy(new_folder_path, new_rpp_path, original_count)
-  
-  if not verify_success then
-    log_message("❌ RASP Error: Verification failed")
-    log_message("   " .. verify_result)
-    return false, "Verification failed: " .. verify_result
-  end
-  
-  -- Open the new project in REAPER
-  reaper.Main_openProject(new_rpp_path)
-  
-  -- Success logging
+
   log_message("✅ RASP: Version created successfully!")
   log_message("   📄 Project: " .. new_rpp_name)
-  log_message("   🎵 Files: " .. verify_result .. " copied")
   log_message("   📂 Location: " .. new_folder_path)
-  
-  return true, string.format("Version %s created with %d files", version_suffix, verify_result)
+
+  return true, string.format("Version %s created", version_suffix)
 end
 
 -- Create a new versioned copy of the project
