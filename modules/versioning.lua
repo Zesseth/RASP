@@ -192,7 +192,7 @@ function versioning.create_new_version_safe()
   -- Save using Reaper's engine with flag 2: copies all media into project directory
   -- and rewrites internal .rpp references — identical to Save As with "Copy all media" ticked.
   -- Main_SaveProjectEx returns void; verify success by checking file existence.
-  reaper.Main_SaveProjectEx(0, new_rpp_path, 2)
+  reaper.Main_SaveProjectEx(info.project, new_rpp_path, 2)
 
   if not file_ops.file_exists(new_rpp_path) then
     local err_msg = "Save failed: project file not found at " .. new_rpp_path
