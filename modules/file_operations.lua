@@ -1,9 +1,8 @@
 --[[
   RASP File Operations Module
 
-  Handles file system operations for Linux and macOS only.
-  Windows is not supported — Reaper's native Main_SaveProjectEx handles
-  versioning on all platforms, but archiving (copy/delete directories)
+  Handles file system operations for Linux only.
+  Windows is not supported — archiving (copy/delete directories)
   relies on shell commands (cp, rm) that are not available on Windows.
 ]]--
 

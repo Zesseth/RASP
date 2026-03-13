@@ -9,18 +9,18 @@ A Lua plugin for Reaper DAW that provides automatic project versioning with full
 - **Safe Auto-versioning** - Copies entire project with all media files
 - **Dual Saving Mode** - Choose between Native (Reaper dialog) or Auto (fully automated)
 - **Conflict Handling** - Smart handling when version folder already exists
-- **Cross-platform** - Works on Linux (Debian) and Windows
+- **Linux support** - Tested on Debian Linux
 
 ## Requirements
 
 ### Required
 - **Reaper DAW** v6.0 or newer (tested with v7.x)
-- **Operating System**: Linux (Debian) or macOS (Windows not supported — see note below)
+- **Operating System**: Linux (Debian)
 
 ### Recommended
 No extensions or additional software needed.
 
-> **Note:** Windows is not supported. Versioning uses Reaper's native `Main_SaveProjectEx` which works on all platforms, but archiving (moving version folders) relies on `cp` and `rm` shell commands which are not available on Windows.
+> **Note:** Windows is not supported. Archiving relies on `cp` and `rm` shell commands which are not available on Windows.
 
 ## Project Structure
 
@@ -171,4 +171,5 @@ This ensures your versioned projects are **100% self-contained** and portable.
 - Find all Reaper projects (from Reaper media folder)
 - Choose what projects will be archived and how many versions are kept
 - Configuration option for single "Reaper media" folder
+- Windows support (no plans currently — archiving requires shell commands unavailable on Windows)
     
