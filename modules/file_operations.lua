@@ -159,171 +159,123 @@ function file_ops.create_directory(path)
   return true
 end
 
--- Copy a single file (cross-platform)
-function file_ops.copy_file(source, dest)
-  if not source or not dest then return false, "Invalid paths" end
-  if not file_ops.file_exists(source) then return false, "Source not found: " .. source end
-  
-  source = file_ops.normalize_path(source)
-  dest = file_ops.normalize_path(dest)
-  
+-- Execute command and get exit code (cross-platform)
+local function execute_with_exitcode(cmd)
   local os_type = file_ops.get_os()
-  local cmd
+  local full_cmd
   
   if os_type == "windows" then
-    -- Use copy command on Windows
-    cmd = string.format('copy /Y "%s" "%s"', source, dest)
+    -- Windows: use cmd /c and echo ERRORLEVEL
+    full_cmd = string.format('cmd /c "%s & echo %%ERRORLEVEL%%"', cmd)
   else
-    -- Use cp on Linux/macOS
-    cmd = string.format('cp "%s" "%s"', source, dest)
+    -- Unix: append exit code
+    full_cmd = string.format('%s ; echo $?', cmd)
   end
   
-  local result = os.execute(cmd)
-  
-  if result == 0 or result == true then
-    return true
-  else
-    return false, "Copy failed: " .. cmd
+  local handle = io.popen(full_cmd)
+  if not handle then
+    return nil, "Failed to execute command"
   end
+  
+  local result = handle:read("*a")
+  handle:close()
+  
+  -- Extract exit code from last line
+  local exit_code = tonumber(result:match("(%d+)%s*$"))
+  return exit_code
 end
 
 -- Copy entire directory (cross-platform)
 function file_ops.copy_directory(source, dest)
   if not source or not dest then return false, "Invalid paths" end
+  if not file_ops.dir_exists(source) then return false, "Source directory not found: " .. source end
   
   source = file_ops.normalize_path(source)
   dest = file_ops.normalize_path(dest)
   
+  -- Create destination if it doesn't exist
+  if not file_ops.dir_exists(dest) then
+    file_ops.create_directory(dest)
+  end
+  
+  -- Count source files for verification
+  local source_count = file_ops.count_files_in_dir(source)
+  
   local os_type = file_ops.get_os()
   local cmd
+  local exit_code
   
   if os_type == "windows" then
     -- Use robocopy on Windows (returns 0-7 for success)
     cmd = string.format('robocopy "%s" "%s" /E /NFL /NDL /NJH /NJS', source, dest)
-    local result = os.execute(cmd)
-    -- Robocopy returns 0-7 for various success states
-    if type(result) == "number" then
-      return result <= 7
+    exit_code = execute_with_exitcode(cmd)
+    
+    -- Robocopy: 0-7 = success (with various copy states), 8+ = error
+    if not exit_code or exit_code >= 8 then
+      return false, "Robocopy failed with exit code: " .. tostring(exit_code)
     end
-    return result == true
   else
-    -- Use cp -r on Linux/macOS
-    cmd = string.format('cp -r "%s"/* "%s"/', source, dest)
-    local result = os.execute(cmd)
-    return result == 0 or result == true
+    -- Use cp -r on Linux/macOS (use /. to include hidden files)
+    cmd = string.format('cp -r "%s"/. "%s"/', source, dest)
+    exit_code = execute_with_exitcode(cmd)
+    
+    if not exit_code or exit_code ~= 0 then
+      return false, "Copy failed with exit code: " .. tostring(exit_code)
+    end
   end
+  
+  -- Verify destination has files
+  local dest_count = file_ops.count_files_in_dir(dest)
+  if dest_count == 0 and source_count > 0 then
+    return false, "Copy verification failed: destination is empty"
+  end
+  
+  return true
 end
 
--- Get all media files used in current project
-function file_ops.get_project_media_files()
-  local media_files = {}
-  local seen = {} -- Avoid duplicates
+-- Delete entire directory (cross-platform)
+function file_ops.delete_directory(path)
+  if not path or path == "" then return false, "Invalid path" end
+  if not file_ops.dir_exists(path) then return false, "Directory not found: " .. path end
   
-  -- Iterate through all media items
-  local item_count = reaper.CountMediaItems(0)
-  for i = 0, item_count - 1 do
-    local item = reaper.GetMediaItem(0, i)
-    local take_count = reaper.CountTakes(item)
-    
-    for t = 0, take_count - 1 do
-      local take = reaper.GetTake(item, t)
-      if take then
-        local source = reaper.GetMediaItemTake_Source(take)
-        if source then
-          local filename = reaper.GetMediaSourceFileName(source)
-          if filename and filename ~= "" and not seen[filename] then
-            seen[filename] = true
-            table.insert(media_files, filename)
-          end
-        end
-      end
+  path = file_ops.normalize_path(path)
+  
+  -- Safety check: don't delete root or very short paths
+  if #path < 10 then
+    return false, "Safety check: path too short to delete"
+  end
+  
+  local os_type = file_ops.get_os()
+  local cmd
+  local exit_code
+  
+  if os_type == "windows" then
+    -- Use rmdir /S /Q on Windows
+    cmd = string.format('rmdir /S /Q "%s"', path)
+  else
+    -- Use rm -rf on Linux/macOS
+    cmd = string.format('rm -rf "%s"', path)
+  end
+  
+  exit_code = execute_with_exitcode(cmd)
+  
+  if os_type == "windows" then
+    -- rmdir returns 0 on success
+    if exit_code ~= 0 then
+      return false, "Delete failed with exit code: " .. tostring(exit_code)
+    end
+  else
+    if exit_code ~= 0 then
+      return false, "Delete failed with exit code: " .. tostring(exit_code)
     end
   end
   
-  return media_files
-end
-
--- Get all files in project directory (recursive)
-function file_ops.get_all_project_files(project_dir)
-  local files = {}
-  
-  local function scan_dir(dir, relative_path)
-    -- Scan files
-    local i = 0
-    while true do
-      local filename = reaper.EnumerateFiles(dir, i)
-      if not filename then break end
-      
-      local full_path = file_ops.join_path(dir, filename)
-      local rel_path = relative_path ~= "" and file_ops.join_path(relative_path, filename) or filename
-      
-      table.insert(files, {
-        full_path = full_path,
-        relative_path = rel_path,
-        filename = filename
-      })
-      
-      i = i + 1
-    end
-    
-    -- Scan subdirectories
-    i = 0
-    while true do
-      local subdir = reaper.EnumerateSubdirectories(dir, i)
-      if not subdir then break end
-      
-      local full_subdir = file_ops.join_path(dir, subdir)
-      local rel_subdir = relative_path ~= "" and file_ops.join_path(relative_path, subdir) or subdir
-      
-      scan_dir(full_subdir, rel_subdir)
-      
-      i = i + 1
-    end
+  -- Verify directory is gone
+  if file_ops.dir_exists(path) then
+    return false, "Delete verification failed: directory still exists"
   end
   
-  scan_dir(project_dir, "")
-  return files
-end
-
--- Copy all project files to new directory
-function file_ops.copy_project_files(source_dir, dest_dir, exclude_rpp)
-  if not file_ops.create_directory(dest_dir) then
-    return false, "Could not create destination directory"
-  end
-  
-  local files = file_ops.get_all_project_files(source_dir)
-  local copied = 0
-  local errors = {}
-  
-  for _, file_info in ipairs(files) do
-    -- Skip .rpp files if requested (we'll save a new one)
-    local skip = exclude_rpp and file_info.filename:match("%.rpp$")
-    
-    if not skip then
-      -- Create subdirectory if needed
-      local rel_dir = file_ops.get_directory(file_info.relative_path)
-      if rel_dir and rel_dir ~= "" then
-        local sub_dest = file_ops.join_path(dest_dir, rel_dir)
-        file_ops.create_directory(sub_dest)
-      end
-      
-      -- Copy file
-      local dest_path = file_ops.join_path(dest_dir, file_info.relative_path)
-      local success, err = file_ops.copy_file(file_info.full_path, dest_path)
-      
-      if success then
-        copied = copied + 1
-      else
-        table.insert(errors, err or ("Failed: " .. file_info.relative_path))
-      end
-    end
-  end
-  
-  if #errors > 0 then
-    return false, string.format("Copied %d files, %d errors", copied, #errors)
-  end
-  
-  return true, string.format("Copied %d files", copied)
+  return true
 end
 
 return file_ops
