@@ -42,6 +42,10 @@ modules/
 - `reaper.ShowMessageBox` — confirmation dialogs
 - `reaper.GetProjectPath` / `reaper.GetProjectName` — current open project info
 
+## Language
+
+All code comments, commit messages, issue comments, PR descriptions, and documentation must be written in **English**. This is a public repository.
+
 ## Current Development State
 
 **Active branch:** `V0.1_features` — implements roadmap v0.2 features (untested as of 2026-03-13):
