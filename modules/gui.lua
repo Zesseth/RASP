@@ -2,7 +2,7 @@
   RASP GUI Module
   
   Provides a dockable user interface for RASP functionality.
-  Built with gfx functions for cross-platform compatibility.
+  Built with gfx functions.
   
   Designed to be extensible for future features (archiving, etc.)
 ]]--

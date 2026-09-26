@@ -4,36 +4,36 @@
 
 ### Required
 - **Reaper DAW** v6.0 or newer (tested with v7.x)
-- **Operating System**: Linux (Debian), Windows, or macOS
+- **Operating System**: Linux (Debian) — Windows and macOS are not supported and not planned
 
-### Recommended: SWS Extension
+### Not required
 
-The **SWS Extension** adds powerful features to Reaper and enables RASP to automatically configure settings.
-
-**Benefits with SWS installed:**
-- RASP can automatically enable "Copy imported media to project media directory" setting
-- Better integration with Reaper's internal configuration
-
-**Installation:**
-1. Go to https://www.sws-extension.org/
-2. Download the installer for your operating system
-3. Run the installer (Reaper should be closed)
-4. Restart Reaper - SWS will be automatically loaded
-
-**Without SWS:**
-- RASP will still work, but you'll need to configure Reaper settings manually
-- RASP will show instructions if a setting needs to be changed
+No Reaper extensions (e.g. SWS) or other software are needed. RASP uses only
+Reaper's built-in ReaScript API and the standard Unix `cp` command available
+on Debian by default.
 
 ## Installation Steps
 
 ### 1. Locate Reaper Scripts Folder
 
 In Reaper, go to:
-- **Options** → **Show REAPER resource path in explorer/finder**
+- **Options** → **Show REAPER resource path in file manager**
 
-This opens your Reaper resource folder. Navigate to the `Scripts` subfolder (create it if it doesn't exist).
+This opens your Reaper resource folder. On Debian this is typically `~/.config/REAPER`.
+Navigate to the `Scripts` subfolder (create it if it doesn't exist).
 
-### 2. Copy RASP Files
+### 2. Get the RASP Files
+
+Either clone the repository or download it as a ZIP:
+
+```bash
+git clone https://github.com/Zesseth/RASP.git
+# or download: GitHub page → Code → Download ZIP, then unzip
+```
+
+You need the `RASP/` folder from the repository root.
+
+### 3. Copy RASP Files
 
 Copy the entire `RASP` folder into the `Scripts` directory:
 
@@ -49,7 +49,7 @@ REAPER/
             └── versioning.lua
 ```
 
-### 3. Load Script in Reaper
+### 4. Load Script in Reaper
 
 1. Open Reaper
 2. Open the **Actions** menu (shortcut: `?` or `Shift+/`)
@@ -57,13 +57,13 @@ REAPER/
 4. Navigate to `Scripts/RASP/RASP.lua`
 5. Select it and click **Open**
 
-### 4. Add Keyboard Shortcut (Optional)
+### 5. Add Keyboard Shortcut (Optional)
 
 1. In the Actions window, find "Script: RASP.lua"
 2. Select it and click **"Add..."** to assign a keyboard shortcut
 3. Recommended: `Ctrl+Alt+V` for quick version creation
 
-### 5. Add to Toolbar (Optional)
+### 6. Add to Toolbar (Optional)
 
 1. Right-click any toolbar
 2. Choose **Customize toolbar...**
@@ -126,8 +126,7 @@ reaper.SetExtState("RASP", "version_digits", "4", true)
 ### Files not copying
 - Check write permissions on the destination folder
 - Ensure enough disk space is available
-- On Linux: verify `cp` command is available
-- On Windows: verify `copy` command is available
+- Verify the `cp` command is available (standard on Debian)
 
 ### Window doesn't dock
 - The RASP window can be docked by dragging it to a dock area
@@ -141,11 +140,16 @@ reaper.SetExtState("RASP", "version_digits", "4", true)
    ```lua
    reaper.DeleteExtState("RASP", "version_prefix", true)
    reaper.DeleteExtState("RASP", "version_digits", true)
-   -- etc.
+   reaper.DeleteExtState("RASP", "start_version", true)
+   reaper.DeleteExtState("RASP", "window_dock", true)
+   reaper.DeleteExtState("RASP", "window_x", true)
+   reaper.DeleteExtState("RASP", "window_y", true)
+   reaper.DeleteExtState("RASP", "window_width", true)
+   reaper.DeleteExtState("RASP", "window_height", true)
    ```
 
 ## Future Versions
 
-- **v0.2**: Local archiving with configurable destinations
-- **v0.3**: Project discovery and batch operations
-- **v0.4**: Cloud archiving (Backblaze, S3, Azure, Storj)
+- **v0.2**: Safe versioning, Native/Auto mode, conflict handling, local archiving with archiving UI
+- **v0.3**: Archive to Backblaze B2 and restore from B2
+- **v0.4**: Media folder configuration, project discovery, per-project archive selection
