@@ -7,13 +7,13 @@ A Lua plugin for Reaper DAW that provides automatic project versioning with full
 
 - **Dockable UI** - Native Reaper interface
 - **Auto-versioning** - Open save as dialog
-- **Cross-platform** - Works on Linux (Debian) and Windows
+- **Linux only** - Tested on Debian
 
 ## Requirements
 
 ### Required
 - **Reaper DAW** v6.0 or newer (tested with v7.x)
-- **Operating System**: Linux (Debian) or Windows 11 (tested)
+- **Operating System**: Linux (Debian) — Windows and macOS are not supported and not planned
 
 ### Recommended
 No extensions or additonal needed.
@@ -76,4 +76,5 @@ MyProject_v002/MyProject_v002.rpp  → Version 2
 
 ### Future
 - Additional cloud storage destinations (Amazon S3, Azure Blob Storage, Storj)
+- Windows support is not planned (file operations rely on Unix shell commands)
     

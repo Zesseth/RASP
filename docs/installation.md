@@ -4,7 +4,7 @@
 
 ### Required
 - **Reaper DAW** v6.0 or newer (tested with v7.x)
-- **Operating System**: Linux (Debian), Windows, or macOS
+- **Operating System**: Linux (Debian) — Windows and macOS are not supported and not planned
 
 ### Recommended: SWS Extension
 
@@ -29,7 +29,7 @@ The **SWS Extension** adds powerful features to Reaper and enables RASP to autom
 ### 1. Locate Reaper Scripts Folder
 
 In Reaper, go to:
-- **Options** → **Show REAPER resource path in explorer/finder**
+- **Options** → **Show REAPER resource path in file manager**
 
 This opens your Reaper resource folder. Navigate to the `Scripts` subfolder (create it if it doesn't exist).
 
@@ -126,8 +126,7 @@ reaper.SetExtState("RASP", "version_digits", "4", true)
 ### Files not copying
 - Check write permissions on the destination folder
 - Ensure enough disk space is available
-- On Linux: verify `cp` command is available
-- On Windows: verify `copy` command is available
+- Verify the `cp` command is available (standard on Debian)
 
 ### Window doesn't dock
 - The RASP window can be docked by dragging it to a dock area
@@ -146,6 +145,6 @@ reaper.SetExtState("RASP", "version_digits", "4", true)
 
 ## Future Versions
 
-- **v0.2**: Local archiving with configurable destinations
-- **v0.3**: Project discovery and batch operations
-- **v0.4**: Cloud archiving (Backblaze, S3, Azure, Storj)
+- **v0.2**: Safe versioning, Native/Auto mode, conflict handling, local archiving with archiving UI
+- **v0.3**: Archive to Backblaze B2 and restore from B2
+- **v0.4**: Media folder configuration, project discovery, per-project archive selection

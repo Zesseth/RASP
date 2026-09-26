@@ -3,42 +3,21 @@
   
   Handles file system operations including:
   - Directory creation
-  - File copying (cross-platform)
+  - File copying (Linux only)
   - Media file collection from Reaper project
 ]]--
 
 local file_ops = {}
 
--- Detect operating system
-function file_ops.get_os()
-  local os_name = reaper.GetOS()
-  if os_name:match("Win") then
-    return "windows"
-  elseif os_name:match("OSX") or os_name:match("macOS") then
-    return "macos"
-  else
-    return "linux"
-  end
-end
-
--- Get path separator for current OS
+-- Path separator (Linux only)
 function file_ops.get_separator()
-  if file_ops.get_os() == "windows" then
-    return "\\"
-  else
-    return "/"
-  end
+  return "/"
 end
 
--- Normalize path separators for current OS
+-- Normalize path separators to forward slashes
 function file_ops.normalize_path(path)
   if not path then return nil end
-  local sep = file_ops.get_separator()
-  if sep == "\\" then
-    return path:gsub("/", "\\")
-  else
-    return path:gsub("\\", "/")
-  end
+  return path:gsub("\\", "/")
 end
 
 -- Join path components
@@ -159,7 +138,7 @@ function file_ops.create_directory(path)
   return true
 end
 
--- Copy a single file (cross-platform)
+-- Copy a single file
 function file_ops.copy_file(source, dest)
   if not source or not dest then return false, "Invalid paths" end
   if not file_ops.file_exists(source) then return false, "Source not found: " .. source end
@@ -167,17 +146,7 @@ function file_ops.copy_file(source, dest)
   source = file_ops.normalize_path(source)
   dest = file_ops.normalize_path(dest)
   
-  local os_type = file_ops.get_os()
-  local cmd
-  
-  if os_type == "windows" then
-    -- Use copy command on Windows
-    cmd = string.format('copy /Y "%s" "%s"', source, dest)
-  else
-    -- Use cp on Linux/macOS
-    cmd = string.format('cp "%s" "%s"', source, dest)
-  end
-  
+  local cmd = string.format('cp "%s" "%s"', source, dest)
   local result = os.execute(cmd)
   
   if result == 0 or result == true then
@@ -187,31 +156,16 @@ function file_ops.copy_file(source, dest)
   end
 end
 
--- Copy entire directory (cross-platform)
+-- Copy entire directory
 function file_ops.copy_directory(source, dest)
   if not source or not dest then return false, "Invalid paths" end
   
   source = file_ops.normalize_path(source)
   dest = file_ops.normalize_path(dest)
   
-  local os_type = file_ops.get_os()
-  local cmd
-  
-  if os_type == "windows" then
-    -- Use robocopy on Windows (returns 0-7 for success)
-    cmd = string.format('robocopy "%s" "%s" /E /NFL /NDL /NJH /NJS', source, dest)
-    local result = os.execute(cmd)
-    -- Robocopy returns 0-7 for various success states
-    if type(result) == "number" then
-      return result <= 7
-    end
-    return result == true
-  else
-    -- Use cp -r on Linux/macOS
-    cmd = string.format('cp -r "%s"/* "%s"/', source, dest)
-    local result = os.execute(cmd)
-    return result == 0 or result == true
-  end
+  local cmd = string.format('cp -r "%s"/* "%s"/', source, dest)
+  local result = os.execute(cmd)
+  return result == 0 or result == true
 end
 
 -- Get all media files used in current project
