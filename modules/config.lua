@@ -89,17 +89,28 @@ function config.format_version(num)
   return prefix .. string.format(format, num)
 end
 
+-- Escape the version prefix for use in Lua patterns
+function config.get_escaped_prefix()
+  local prefix = config.get("version_prefix")
+  return prefix:gsub("([%.%-%+%*%?%[%]%^%$%(%)%%])", "%%%1")
+end
+
 -- Parse version number from string, returns number or nil
 function config.parse_version(str)
-  local prefix = config.get("version_prefix")
-  -- Escape special pattern characters in prefix
-  local escaped_prefix = prefix:gsub("([%.%-%+%*%?%[%]%^%$%(%)%%])", "%%%1")
+  local escaped_prefix = config.get_escaped_prefix()
   local pattern = escaped_prefix .. "(%d+)$"
   local version_str = str:match(pattern)
   if version_str then
     return tonumber(version_str)
   end
   return nil
+end
+
+-- Strip the version suffix from a name, returns the base name or nil
+-- Works regardless of how many digits the version in the name actually has
+function config.strip_version_suffix(str)
+  local escaped_prefix = config.get_escaped_prefix()
+  return str:match("^(.+)" .. escaped_prefix .. "%d+$")
 end
 
 return config
