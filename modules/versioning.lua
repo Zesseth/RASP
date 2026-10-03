@@ -105,13 +105,45 @@ function versioning.get_next_version(info)
   end
 end
 
--- Create a new versioned copy of the project (v0.1 auto versioning)
+-- Handle version folder conflict (#27)
+-- Returns: resolved_path, resolved_folder_name, or nil if user cancelled
+local function handle_version_conflict(target_path, version_name, info, next_version)
+  local msg = string.format(
+    "Folder '%s' already exists!\n\nChoose action:\n" ..
+    "YES = Increment version number (use next available)\n" ..
+    "NO = Overwrite existing folder\n" ..
+    "CANCEL = Do nothing",
+    version_name
+  )
+
+  local result = reaper.ShowMessageBox(msg, "RASP - Version Conflict", 3)
+
+  if result == 6 then
+    local try_version = next_version
+    while try_version <= 999 do
+      local try_suffix = config.format_version(try_version)
+      local try_name = info.base_name .. try_suffix
+      local try_path = file_ops.join_path(info.parent_directory, try_name)
+      if not file_ops.dir_exists(try_path) then
+        return try_path, try_name
+      end
+      try_version = try_version + 1
+    end
+    return nil
+  elseif result == 7 then
+    return target_path, version_name
+  else
+    return nil
+  end
+end
+
+-- Create a new versioned copy of the project (auto mode)
 -- Uses Main_SaveProjectEx flag 3 = flag 1 (create subdirectory)
 --                          + flag 2 (copy all media into project dir)
 -- Reaper creates the folder, copies all media, saves the .rpp and
 -- rewrites internal path references atomically.
 -- Do NOT pre-create the directory: flag 1 requires Reaper to create it.
-function versioning.create_new_version()
+function versioning.create_new_version_auto()
   local info, err = versioning.get_project_info()
   if not info then
     return false, err or "No project loaded"
@@ -122,13 +154,16 @@ function versioning.create_new_version()
   local new_folder_name = info.base_name .. version_suffix
   local new_folder_path = file_ops.join_path(info.parent_directory, new_folder_name)
   
-  -- Skip numbers whose folder already exists
-  local try_version = next_version
-  while file_ops.dir_exists(new_folder_path) do
-    try_version = try_version + 1
-    version_suffix = config.format_version(try_version)
-    new_folder_name = info.base_name .. version_suffix
-    new_folder_path = file_ops.join_path(info.parent_directory, new_folder_name)
+  -- Conflict handling (#27): ask the user when the target folder exists
+  if file_ops.dir_exists(new_folder_path) then
+    local resolved_path, resolved_name = handle_version_conflict(
+      new_folder_path, new_folder_name, info, next_version
+    )
+    if not resolved_path then
+      return false, "Operation cancelled"
+    end
+    new_folder_path = resolved_path
+    new_folder_name = resolved_name
   end
   
   local new_rpp_name = new_folder_name .. ".rpp"
@@ -144,6 +179,19 @@ function versioning.create_new_version()
   end
   
   return true, string.format("Version %s created", new_folder_name)
+end
+
+-- Create a new version, mode determined by config (#26)
+-- "native" opens Reaper's Save As dialog; "auto" versions programmatically
+function versioning.create_new_version(mode)
+  mode = mode or config.get("versioning_mode") or "auto"
+  
+  if mode == "native" then
+    reaper.Main_OnCommand(40022, 0)
+    return true, "Save As dialog opened"
+  end
+  
+  return versioning.create_new_version_auto()
 end
 
 -- Get display string for current version
